@@ -38,13 +38,47 @@ async function run() {
 
         // Write down all of your routes;
 
+        // Getting the instrutor classes based on the mail
+        app.get('/classes/myclasses', async (req, res) => {
+            const email = req.query.email;
+            const query = { instructorEmail: email }
+            const result = await classesCollection.find(query).toArray()
+            res.send(result)
+        })
         // Users api;
+        // Making the admin;
+        app.post('/users/admin/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    role: `admin`
+                },
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options)
+            res.send(result)
+        })
+        // Making the instructor;
+        app.post('/users/instructor/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    role: `instructor`
+                },
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options)
+            res.send(result)
+        })
 
+        // Getting the all valid user
         app.get('/users', async (req, res) => {
             const result = await usersCollection.find().toArray()
             res.send(result)
         })
-
+        // Insert SignUp user
         app.post('/users', async (req, res) => {
             const users = req.body;
             const result = await usersCollection.insertOne(users)
@@ -95,9 +129,24 @@ async function run() {
             res.send(result);
         });
 
+        // New Item adding for class
         app.post('/classes', async (req, res) => {
             const cartItem = req.body;
             const result = await cartsCollection.insertOne(cartItem)
+            res.send(result)
+        })
+
+        // Pending Update
+        app.post('/classes/status/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    status: `approved`
+                },
+            };
+            const result = await classesCollection.updateOne(filter, updateDoc, options)
             res.send(result)
         })
 
@@ -115,6 +164,13 @@ async function run() {
         })
 
         // All the added Classes;
+
+
+        app.post('/classes/addclass', async (req, res) => {
+            const classes = req.body;
+            const result = await classesCollection.insertOne(classes)
+            res.send(result)
+        })
         app.get('/classes', async (req, res) => {
             const result = await classesCollection.find().toArray()
             res.send(result)
