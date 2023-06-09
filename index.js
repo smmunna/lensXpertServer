@@ -38,6 +38,8 @@ async function run() {
 
         // Write down all of your routes;
 
+        // ---------------------------------------------
+
         // Getting the instrutor classes based on the mail
         app.get('/classes/myclasses', async (req, res) => {
             const email = req.query.email;
@@ -81,10 +83,38 @@ async function run() {
         // Insert SignUp user
         app.post('/users', async (req, res) => {
             const users = req.body;
+            const query = { email: users.email }
+            const existingUser = await usersCollection.findOne(query)
+            if (existingUser) {
+                return res.send({ message: "User already exist" })
+            }
             const result = await usersCollection.insertOne(users)
             res.send(result)
         })
 
+        // Payment Hisstory for status completed for user by admin
+        app.get('/userpaymenthistory', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email }
+            const result = await paymentsCollection.find(query).toArray()
+            res.send(result);
+        })
+        app.post('/paymenthistory/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    status: `completed`
+                },
+            };
+            const result = await paymentsCollection.updateOne(filter, updateDoc, options)
+            res.send(result)
+        })
+        app.get('/paymenthistory', async (req, res) => {
+            const result = await paymentsCollection.find().toArray()
+            res.send(result);
+        })
         // Cart Payment total
 
         // Create a PaymentIntent with the order amount and currency
@@ -165,12 +195,19 @@ async function run() {
 
         // All the added Classes;
 
-
+        // valuable classes by the number of students;
+        app.get('/priorityclass', async (req, res) => {
+            const result = await classesCollection.find().sort({ numberOfStudents: 1 }).toArray()
+            res.send(result)
+        })
         app.post('/classes/addclass', async (req, res) => {
             const classes = req.body;
             const result = await classesCollection.insertOne(classes)
             res.send(result)
         })
+
+
+
         app.get('/classes', async (req, res) => {
             const result = await classesCollection.find().toArray()
             res.send(result)
