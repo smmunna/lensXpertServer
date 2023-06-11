@@ -40,6 +40,80 @@ async function run() {
 
         // ---------------------------------------------
 
+        // app.get('/paymentsinfo/:id', async (req, res) => {
+        //     const id = req.params.id;
+        //     const query = { _id: new ObjectId(id) };
+        //     const item = await paymentsCollection.findOne(query);
+        //     res.send(item)
+        // });
+
+        // Updating the number of students;
+        app.patch('/updatestudentsnumber/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+                const result = await classesCollection.findOne(query);
+
+                if (!result) {
+                    return res.status(404).send({ message: 'Class not found' });
+                }
+
+                // Update the fields
+                const updatedResult = await classesCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $inc: { availableSeats: -1, numberOfStudents: 1 },
+                    }
+                );
+
+                res.send({ message: 'Class updated successfully' });
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ message: 'Error updating class' });
+            }
+        });
+
+
+        // Getting all the instructors
+        app.get('/instructors', async (req, res) => {
+            const result = await instructorsCollection.find().toArray()
+            res.send(result)
+        })
+        // Sorting by number of students; higher students will show first;
+        app.get('/topclasses', async (req, res) => {
+            const result = await classesCollection.find().sort({ numberOfStudents: -1 }).toArray();
+            res.send(result);
+        });
+
+        // Getting the totalClass;  
+        app.get('/totalStudents', async (req, res) => {
+            const result = await usersCollection.estimatedDocumentCount();
+            res.send({ totalStudents: result })
+        })
+        app.get('/totalProducts', async (req, res) => {
+            const result = await classesCollection.estimatedDocumentCount();
+            res.send({ totalProducts: result })
+        })
+
+        // Classes Pagination
+        app.get('/products', async (req, res) => {
+            console.log(req.query)
+            const page = parseInt(req.query.page) || 0;
+            const limit = parseInt(req.query.limit) || 5;
+            const skip = page * limit;
+            const result = await classesCollection.find().skip(skip).limit(limit).toArray()
+            res.send(result)
+        })
+
+        // Search Classes;
+        app.get('/search', async (req, res) => {
+            const searchQuery = req.query.name
+            const regexPattern = new RegExp(searchQuery, 'i')
+            const result = await classesCollection.find({ name: regexPattern }).toArray()
+            res.send(result)
+        })
+
+
         // Getting the instrutor classes based on the mail
         app.get('/classes/myclasses', async (req, res) => {
             const email = req.query.email;
@@ -115,12 +189,14 @@ async function run() {
             const result = await paymentsCollection.find().toArray()
             res.send(result);
         })
+
+
         // Cart Payment total
 
         // Create a PaymentIntent with the order amount and currency
         app.post("/create-payment-intent", async (req, res) => {
             const { price } = req.body;
-            const amount = price * 100;
+            const amount = parseFloat(price * 100);
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
@@ -143,11 +219,26 @@ async function run() {
             res.send({ result, deleteResult })
         })
 
+        // Delete all the carts item from the carts after successfull payments;
+        app.delete('/deleteallcartsitems', async (req, res) => {
+            const email = req.query.email;
+            const query = { usermail: email };
+            const result = await cartsCollection.deleteMany(query);
+            res.send(result);
+        })
+
+
         // Delete from Carts
         app.delete('/carts/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await cartsCollection.deleteOne(query)
+            res.send(result)
+        })
+        app.get('/carts/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await cartsCollection.findOne(query)
             res.send(result)
         })
 
