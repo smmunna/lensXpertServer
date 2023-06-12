@@ -3,6 +3,7 @@ const app = express()
 require('dotenv').config()
 const cors = require('cors')
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+const jwt = require('jsonwebtoken');
 
 const port = process.env.PORT || 5000
 
@@ -24,6 +25,26 @@ const client = new MongoClient(uri, {
     }
 });
 
+// VERIFY JWT FUNCTION
+const verifyJWT = (req, res, next) => {
+    const authorization = req.headers.authorization
+    // console.log(authorization)
+    if (!authorization) {
+        return res.send({ error: 'Error occured', message: "You can not access this." })
+    }
+    const token = authorization.split(' ')[1]
+    // console.log(token)
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decode) => {
+        if (error) {
+            return res.send({ error: 'Error occured', message: "You can not access this." })
+        }
+        req.decode = decode
+        next()
+    })
+}
+
+
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -40,12 +61,20 @@ async function run() {
 
         // ---------------------------------------------
 
-        // app.get('/paymentsinfo/:id', async (req, res) => {
-        //     const id = req.params.id;
-        //     const query = { _id: new ObjectId(id) };
-        //     const item = await paymentsCollection.findOne(query);
-        //     res.send(item)
-        // });
+
+
+        // JWT IMPLEMENTATION
+        // Jwt procedure for signin token;
+        app.post('/jwt', async (req, res) => {
+            const user = req.body.email;
+            // console.log(user)
+            const token = jwt.sign({ user }, process.env.ACCESS_TOKEN_SECRET, {
+                expiresIn: '1h'
+            })
+            // console.log(token)
+            res.send({ token })
+
+        })
 
         // Updating the number of students;
         app.patch('/updatestudentsnumber/:id', async (req, res) => {
@@ -97,7 +126,7 @@ async function run() {
 
         // Classes Pagination
         app.get('/products', async (req, res) => {
-            console.log(req.query)
+            // console.log(req.query)
             const page = parseInt(req.query.page) || 0;
             const limit = parseInt(req.query.limit) || 5;
             const skip = page * limit;
@@ -114,10 +143,19 @@ async function run() {
         })
 
 
-        // Getting the instrutor classes based on the mail
-        app.get('/classes/myclasses', async (req, res) => {
-            const email = req.query.email;
-            const query = { instructorEmail: email }
+        // Getting the instrutor classes based on the maill
+        app.get('/classes/myclasses', verifyJWT, async (req, res) => {
+            // console.log(req.headers.authorization)
+            const decode = req.decode
+            // console.log('Comeback after decode',decode.user)
+            if (decode.user !== req.query.email) {
+                res.status(403).send("Unauthorized access")
+            }
+            let query = {}
+            if (req.query?.email) {
+                query = { instructorEmail: req.query.email }
+            }
+
             const result = await classesCollection.find(query).toArray()
             res.send(result)
         })
@@ -167,9 +205,17 @@ async function run() {
         })
 
         // Payment Hisstory for status completed for user by admin
-        app.get('/userpaymenthistory', async (req, res) => {
-            const email = req.query.email;
-            const query = { email: email }
+        app.get('/userpaymenthistory', verifyJWT, async (req, res) => {
+            // console.log(req.headers.authorization)
+            const decode = req.decode
+            // console.log('Comeback after decode',decode.user)
+            if (decode.user !== req.query.email) {
+                res.status(403).send("Unauthorized access")
+            }
+            let query = {}
+            if (req.query?.email) {
+                query = { email: req.query.email }
+            }
             const result = await paymentsCollection.find(query).toArray()
             res.send(result);
         })
@@ -243,9 +289,19 @@ async function run() {
         })
 
         // Add to cart;
-        app.get('/carts', async (req, res) => {
-            const email = req.query.email;
-            const query = { usermail: email };
+        app.get('/carts', verifyJWT, async (req, res) => {
+            // console.log(req.headers.authorization)
+            const decode = req.decode
+            // console.log('Comeback after decode',decode.user)
+            if (decode.user !== req.query.email) {
+                res.status(403).send("Unauthorized access")
+            }
+            let query = {}
+            if (req.query?.email) {
+                query = { usermail: req.query.email }
+            }
+
+            // Showing the result;
             const result = await cartsCollection.find(query).toArray();
             res.send(result);
         });
