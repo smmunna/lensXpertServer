@@ -145,7 +145,7 @@ async function run() {
 
         // Getting the instrutor classes based on the maill
         app.get('/classes/myclasses', async (req, res) => {
-                query = { instructorEmail: req.query.email }
+            query = { instructorEmail: req.query.email }
             const result = await classesCollection.find(query).toArray()
             res.send(result)
         })
@@ -279,18 +279,8 @@ async function run() {
         })
 
         // Add to cart;
-        app.get('/carts', verifyJWT, async (req, res) => {
-            // console.log(req.headers.authorization)
-            const decode = req.decode
-            // console.log('Comeback after decode',decode.user)
-            if (decode.user !== req.query.email) {
-                res.status(403).send("Unauthorized access")
-            }
-            let query = {}
-            if (req.query?.email) {
-                query = { usermail: req.query.email }
-            }
-
+        app.get('/carts', async (req, res) => {
+            query = { usermail: req.query.email }
             // Showing the result;
             const result = await cartsCollection.find(query).toArray();
             res.send(result);
